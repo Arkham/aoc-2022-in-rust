@@ -37,33 +37,21 @@ fn parse_input_one(input: &str) -> Vec<char> {
             let (first, second) = line.split_at(line.chars().count() / 2);
             let first_set: HashSet<char> = HashSet::from_iter(first.chars());
             let second_set: HashSet<char> = HashSet::from_iter(second.chars());
-            Vec::from_iter(first_set.intersection(&second_set).copied())
+            Vec::from_iter(&first_set & &second_set)
         })
         .collect::<Vec<_>>()
 }
 
 fn parse_input_two(input: &str) -> Vec<char> {
-    let groups: Vec<Vec<&str>> = input
+    input
         .lines()
         .collect::<Vec<&str>>()
         .chunks(3)
-        .map(|s| s.into())
-        .collect();
-
-    groups
-        .iter()
         .flat_map(|group| {
             let first_set: HashSet<char> = HashSet::from_iter(group[0].chars());
             let second_set: HashSet<char> = HashSet::from_iter(group[1].chars());
             let third_set: HashSet<char> = HashSet::from_iter(group[2].chars());
-            Vec::from_iter(
-                first_set
-                    .intersection(&second_set)
-                    .copied()
-                    .collect::<HashSet<char>>()
-                    .intersection(&third_set)
-                    .copied(),
-            )
+            Vec::from_iter(&(&first_set & &second_set) & &third_set)
         })
         .collect()
 }
