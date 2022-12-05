@@ -12,7 +12,7 @@ fn parse_sums(input: &str) -> Vec<u32> {
         .map(|group| {
             group
                 .trim_end()
-                .split("\n")
+                .split('\n')
                 .map(|s| s.parse::<u32>().unwrap())
                 .sum()
         })

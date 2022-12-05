@@ -5,7 +5,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(
         parse_input_one(input)
             .iter()
-            .map(|char| char_to_value(char))
+            .map(char_to_value)
             .sum(),
     )
 }
@@ -14,7 +14,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     Some(
         parse_input_two(input)
             .iter()
-            .map(|char| char_to_value(char))
+            .map(char_to_value)
             .sum(),
     )
 }

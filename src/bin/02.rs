@@ -78,7 +78,7 @@ fn find_shape(opponent: &HandShape, desired_outcome: &RoundResult) -> HandShape 
 fn parse_input(input: &str) -> Vec<(&str, &str)> {
     input
         .lines()
-        .map(|line| line.split_once(" ").unwrap())
+        .map(|line| line.split_once(' ').unwrap())
         .collect()
 }
 

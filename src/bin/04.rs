@@ -3,8 +3,7 @@ pub fn part_one(input: &str) -> Option<u32> {
         parse_input(input)
             .iter()
             .filter(|(x, y)| contain(*x, *y))
-            .collect::<Vec<_>>()
-            .len()
+            .count()
             .try_into()
             .unwrap(),
     )
@@ -15,8 +14,7 @@ pub fn part_two(input: &str) -> Option<u32> {
         parse_input(input)
             .iter()
             .filter(|(x, y)| overlap(*x, *y))
-            .collect::<Vec<_>>()
-            .len()
+            .count()
             .try_into()
             .unwrap(),
     )
@@ -27,7 +25,7 @@ fn contain((x1, x2): (u32, u32), (y1, y2): (u32, u32)) -> bool {
 }
 
 fn overlap((x1, x2): (u32, u32), (y1, y2): (u32, u32)) -> bool {
-    (x1 <= y2 && y1 <= x2) || (y1 <= x2 && x1 <= y2)
+    !(x1 > y2 || y1 > x2)
 }
 
 fn to_int(input: &str) -> u32 {
@@ -38,9 +36,9 @@ fn parse_input(input: &str) -> Vec<((u32, u32), (u32, u32))> {
     input
         .lines()
         .map(|line| {
-            let (x, y) = line.split_once(",").unwrap();
-            let (x1, x2) = x.split_once("-").unwrap();
-            let (y1, y2) = y.split_once("-").unwrap();
+            let (x, y) = line.split_once(',').unwrap();
+            let (x1, x2) = x.split_once('-').unwrap();
+            let (y1, y2) = y.split_once('-').unwrap();
             ((to_int(x1), to_int(x2)), (to_int(y1), to_int(y2)))
         })
         .collect()
@@ -59,7 +57,7 @@ mod tests {
     #[test]
     fn test_part_input() {
         let input = "2-4,6-8";
-        assert_eq!(parse_input(&input), vec![((2, 4), (6, 8))]);
+        assert_eq!(parse_input(input), vec![((2, 4), (6, 8))]);
     }
 
     #[test]
