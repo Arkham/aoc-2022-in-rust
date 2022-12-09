@@ -194,7 +194,7 @@ mod tests {
     fn test_parse() {
         let input = "123\n456\n789";
         assert_eq!(
-            parse_input(&input),
+            parse_input(input),
             vec![vec![1, 2, 3], vec![4, 5, 6], vec![7, 8, 9],]
         );
     }
