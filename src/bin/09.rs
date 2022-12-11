@@ -2,6 +2,7 @@ use itertools::Itertools;
 use itertools::MinMaxResult::MinMax;
 use parse_display::{Display, FromStr};
 use rustc_hash::FxHashSet;
+use std::fmt;
 
 pub fn part_one(input: &str) -> Option<u32> {
     solve_with_size(input, 2)
@@ -18,7 +19,6 @@ fn solve_with_size(input: &str, size: usize) -> Option<u32> {
     for ins in moves {
         run_instruction(&ins, &mut state);
     }
-    // print_state(&state);
 
     Some(state.visited.len() as u32)
 }
@@ -52,7 +52,37 @@ fn main() {
     advent_of_code::solve!(2, part_two, input);
 }
 
-type Coords = (i32, i32);
+#[derive(PartialEq, Clone, Copy, Eq, Hash)]
+struct Coords {
+    x: i32,
+    y: i32,
+}
+
+impl fmt::Debug for Coords {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "({}, {})", self.x, self.y)
+    }
+}
+
+impl std::ops::Add for Coords {
+    type Output = Coords;
+
+    fn add(self, other: Coords) -> Coords {
+        Coords {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
+
+impl std::ops::AddAssign for Coords {
+    fn add_assign(&mut self, other: Coords) {
+        *self = Coords {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
+    }
+}
 
 #[derive(PartialEq, Debug)]
 struct State {
@@ -60,27 +90,37 @@ struct State {
     visited: FxHashSet<Coords>,
 }
 
+fn start() -> Coords {
+    Coords { x: 0, y: 0 }
+}
+
 fn initial_state(size: usize) -> State {
     State {
-        rope: vec![(0, 0); size],
-        visited: FxHashSet::from_iter([(0, 0)]),
+        rope: vec![start(); size],
+        visited: FxHashSet::from_iter([start()]),
     }
 }
 
 fn _print_state(state: &State) {
     let rope_as_set: FxHashSet<Coords> = state.rope.iter().copied().collect();
-    let (all_xs, all_ys): (Vec<i32>, Vec<i32>) = state.visited.union(&rope_as_set).copied().unzip();
+    let (all_xs, all_ys): (Vec<i32>, Vec<i32>) = state
+        .visited
+        .union(&rope_as_set)
+        .copied()
+        .map(|c| (c.x, c.y))
+        .unzip();
 
     if let (MinMax(min_x, max_x), MinMax(min_y, max_y)) =
         (all_xs.iter().minmax(), all_ys.iter().minmax())
     {
         for y in (*min_y..=*max_y).rev() {
             for x in *min_x..=*max_x {
-                if rope_as_set.contains(&(x, y)) && state.visited.contains(&(x, y)) {
+                let current: Coords = Coords { x, y };
+                if rope_as_set.contains(&current) && state.visited.contains(&current) {
                     print!("O");
-                } else if rope_as_set.contains(&(x, y)) {
+                } else if rope_as_set.contains(&current) {
                     print!("o");
-                } else if state.visited.contains(&(x, y)) {
+                } else if state.visited.contains(&current) {
                     print!("#");
                 } else {
                     print!(".");
@@ -92,18 +132,21 @@ fn _print_state(state: &State) {
 }
 
 fn should_move(head: Coords, tail: Coords) -> Option<Coords> {
-    let diff_x = head.0 - tail.0;
-    let diff_y = head.1 - tail.1;
+    let diff_x = head.x - tail.x;
+    let diff_y = head.y - tail.y;
 
     match (diff_x, diff_y) {
-        (-2, 0) | (2, 0) | (0, -2) | (0, 2) => Some((tail.0 + diff_x / 2, tail.1 + diff_y / 2)),
+        (-2, 0) | (2, 0) | (0, -2) | (0, 2) => Some(Coords {
+            x: tail.x + diff_x / 2,
+            y: tail.y + diff_y / 2,
+        }),
         (-1, -1) | (-1, 1) | (1, -1) | (1, 1) => None,
         (-1, 0) | (1, 0) | (0, -1) | (0, 1) => None,
         (0, 0) => None,
-        _ => Some((
-            tail.0 + diff_x / diff_x.abs(),
-            tail.1 + diff_y / diff_y.abs(),
-        )),
+        _ => Some(Coords {
+            x: tail.x + diff_x / diff_x.abs(),
+            y: tail.y + diff_y / diff_y.abs(),
+        }),
     }
 }
 
@@ -115,7 +158,13 @@ fn splat_instruction(ins: &Instruction) -> (Coords, u8) {
         Direction::Left => (-1, 0),
     };
 
-    (step, ins.moves)
+    (
+        Coords {
+            x: step.0,
+            y: step.1,
+        },
+        ins.moves,
+    )
 }
 
 fn run_instruction(ins: &Instruction, state: &mut State) {
@@ -123,7 +172,7 @@ fn run_instruction(ins: &Instruction, state: &mut State) {
     let rope_len = state.rope.len();
 
     for _ in 0..times {
-        state.rope[0] = (state.rope[0].0 + step.0, state.rope[0].1 + step.1);
+        state.rope[0] += step;
 
         for i in 1..rope_len {
             match should_move(state.rope[i - 1], state.rope[i]) {
