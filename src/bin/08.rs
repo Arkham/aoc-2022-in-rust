@@ -59,6 +59,7 @@ fn _print_board(board: &Board) {
     println!()
 }
 
+#[allow(clippy::needless_range_loop)]
 fn fill_borders(board: &mut Board) {
     let (n_rows, n_cols) = get_dimensions(board);
 
@@ -72,6 +73,7 @@ fn fill_borders(board: &mut Board) {
     }
 }
 
+#[allow(clippy::needless_range_loop)]
 fn fill_visible(board: &Board, visible: &mut Board) {
     let (n_rows, n_cols) = get_dimensions(board);
 

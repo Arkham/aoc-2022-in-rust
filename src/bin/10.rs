@@ -53,7 +53,7 @@ fn run_input(input: &str, initial: i32) -> Vec<(Instruction, i32)> {
     result
 }
 
-fn print_screen(screen: &Vec<bool>) {
+fn print_screen(screen: &[bool]) {
     let rows = screen.iter().map(|v| if *v { '#' } else { ' ' }).chunks(40);
     for row in &rows {
         let result = row.collect::<String>();
@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn test_parse() {
         let input = "noop\naddx 3\naddx -5";
-        assert_eq!(parse_input(&input), vec![NoOp, AddX(3), AddX(-5)]);
+        assert_eq!(parse_input(input), vec![NoOp, AddX(3), AddX(-5)]);
     }
 
     #[test]
@@ -115,7 +115,7 @@ addx 13
 addx 4
 noop
 addx -1";
-        assert_eq!(part_two(&input), Some(12));
+        assert_eq!(part_two(input), Some(12));
     }
 
     #[test]

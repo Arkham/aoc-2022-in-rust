@@ -38,7 +38,7 @@ fn _print_monkeys(monkeys: &Vec<Monkey>) {
     println!()
 }
 
-fn find_score(monkeys: &Vec<Monkey>) -> Option<u64> {
+fn find_score(monkeys: &[Monkey]) -> Option<u64> {
     let mut counts = monkeys
         .iter()
         .map(|m| m.inspected_items)
@@ -139,7 +139,7 @@ fn op_parser(input: &str) -> IResult<&str, Op> {
 fn op_arg_parser(input: &str) -> IResult<&str, OpArg> {
     alt((
         map(tag("old"), |_| OpArg::Old),
-        map(int_parser, |v| OpArg::Int(v)),
+        map(int_parser, OpArg::Int),
     ))(input)
 }
 
@@ -170,11 +170,11 @@ fn monkey_parser(input: &str) -> IResult<&str, Monkey> {
             terminated(next_parser, tag("\n")),
         )),
         |(id, items, op, next)| Monkey {
-            id: id,
-            items: items,
+            id,
+            items,
+            op,
+            next,
             inspected_items: 0,
-            op: op,
-            next: next,
         },
     )(input)
 }
