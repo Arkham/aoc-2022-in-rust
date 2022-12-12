@@ -24,7 +24,7 @@ pub fn part_two(input: &str) -> Option<usize> {
 
     run_dijkstra(
         &starting_cells,
-        |node| board.successors(&node),
+        |node| board.successors(node),
         |node| node == &board.end,
     )
     .map(|(_, count)| count)

@@ -74,7 +74,7 @@ struct Monkey {
 }
 
 fn run_round<F: FnMut(u64) -> u64>(monkeys: &mut Vec<Monkey>, mut after_run_op: F) {
-    let modulus = monkeys.iter().fold(1, |a, m| a * m.next.0);
+    let modulus : u64 = monkeys.iter().map(|m| m.next.0).product();
 
     for index in 0..monkeys.len() {
         let current = monkeys[index].clone();
