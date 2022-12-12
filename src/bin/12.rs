@@ -1,9 +1,12 @@
-use pathfinding::prelude::dijkstra;
-
 pub fn part_one(input: &str) -> Option<usize> {
     let board = Board::from(input);
 
-    dijkstra(&board.start, |p| board.successors(p), |p| p == &board.end).map(|(_, count)| count)
+    run_dijkstra(
+        &[board.start],
+        |node| board.successors(&node),
+        |node| node == board.end,
+    )
+    .map(|(_, count)| count)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
@@ -19,12 +22,12 @@ pub fn part_two(input: &str) -> Option<usize> {
         }
     }
 
-    starting_cells
-        .iter()
-        .filter_map(|start| {
-            dijkstra(start, |p| board.successors(p), |p| p == &board.end).map(|(_, count)| count)
-        })
-        .min()
+    run_dijkstra(
+        &starting_cells,
+        |node| board.successors(&node),
+        |node| node == board.end,
+    )
+    .map(|(_, count)| count)
 }
 
 fn main() {
@@ -33,7 +36,7 @@ fn main() {
     advent_of_code::solve!(2, part_two, input);
 }
 
-#[derive(Debug, PartialEq, Eq, Hash, Clone)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 struct Coords {
     x: usize,
     y: usize,
@@ -156,6 +159,87 @@ impl From<&str> for Board {
             cells,
         }
     }
+}
+
+use std::cmp::Ordering;
+use std::collections::{BinaryHeap, HashMap};
+
+#[derive(Clone, Eq, PartialEq, Copy, Debug)]
+struct HeapState<T> {
+    node: T,
+    cost: usize,
+}
+
+// Manually implement Ord so we get a min-heap instead of a max-heap
+impl<T: Eq> Ord for HeapState<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.cost.cmp(&self.cost)
+    }
+}
+
+impl<T: Eq> PartialOrd for HeapState<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+use core::hash::Hash;
+use std::marker::Copy;
+
+fn run_dijkstra<
+    T: Eq + Hash + Copy,
+    S: FnOnce(T) -> Vec<(T, usize)> + Copy,
+    E: FnOnce(T) -> bool + Copy,
+>(
+    starting: &[T],
+    successors: S,
+    is_end: E,
+) -> Option<(Vec<T>, usize)> {
+    let mut best: HashMap<T, usize> = HashMap::new();
+    let mut parent: HashMap<T, T> = HashMap::new();
+    let mut heap = BinaryHeap::new();
+
+    for start in starting {
+        best.insert(*start, 0);
+
+        heap.push(HeapState {
+            node: *start,
+            cost: 0,
+        });
+    }
+
+    while let Some(HeapState { node, cost }) = heap.pop() {
+        if is_end(node) {
+            let mut path = vec![];
+            let mut current = Some(&node);
+
+            path.push(node);
+            while let Some(prev) = current {
+                path.push(*prev);
+                current = parent.get(prev)
+            }
+            path.reverse();
+
+            return Some((path, cost));
+        }
+
+        for (next, next_cost) in successors(node) {
+            let new_cost = cost + next_cost;
+
+            let next_state = HeapState {
+                node: next,
+                cost: new_cost,
+            };
+
+            if new_cost < *best.get(&next).unwrap_or(&std::usize::MAX) {
+                best.insert(next, new_cost);
+                parent.insert(next, node);
+                heap.push(next_state);
+            }
+        }
+    }
+
+    None
 }
 
 #[cfg(test)]
