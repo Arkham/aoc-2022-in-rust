@@ -73,7 +73,7 @@ struct Monkey {
     next: (u64, u64, u64),
 }
 
-fn run_round<F: FnOnce(u64) -> u64 + Copy>(monkeys: &mut Vec<Monkey>, after_run_op: F) {
+fn run_round<F: FnMut(u64) -> u64>(monkeys: &mut Vec<Monkey>, mut after_run_op: F) {
     let modulus = monkeys.iter().fold(1, |a, m| a * m.next.0);
 
     for index in 0..monkeys.len() {
@@ -137,10 +137,7 @@ fn op_parser(input: &str) -> IResult<&str, Op> {
 }
 
 fn op_arg_parser(input: &str) -> IResult<&str, OpArg> {
-    alt((
-        map(tag("old"), |_| OpArg::Old),
-        map(int_parser, OpArg::Int),
-    ))(input)
+    alt((map(tag("old"), |_| OpArg::Old), map(int_parser, OpArg::Int)))(input)
 }
 
 fn op_fun_parser(input: &str) -> IResult<&str, OpFun> {

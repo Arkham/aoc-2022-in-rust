@@ -3,8 +3,8 @@ pub fn part_one(input: &str) -> Option<usize> {
 
     run_dijkstra(
         &[board.start],
-        |node| board.successors(&node),
-        |node| node == board.end,
+        |node| board.successors(node),
+        |node| node == &board.end,
     )
     .map(|(_, count)| count)
 }
@@ -25,7 +25,7 @@ pub fn part_two(input: &str) -> Option<usize> {
     run_dijkstra(
         &starting_cells,
         |node| board.successors(&node),
-        |node| node == board.end,
+        |node| node == &board.end,
     )
     .map(|(_, count)| count)
 }
@@ -186,14 +186,10 @@ impl<T: Eq> PartialOrd for HeapState<T> {
 use core::hash::Hash;
 use std::marker::Copy;
 
-fn run_dijkstra<
-    T: Eq + Hash + Copy,
-    S: FnOnce(T) -> Vec<(T, usize)> + Copy,
-    E: FnOnce(T) -> bool + Copy,
->(
+fn run_dijkstra<T: Eq + Hash + Copy, S: FnMut(&T) -> Vec<(T, usize)>, E: FnMut(&T) -> bool>(
     starting: &[T],
-    successors: S,
-    is_end: E,
+    mut successors: S,
+    mut is_end: E,
 ) -> Option<(Vec<T>, usize)> {
     let mut best: HashMap<T, usize> = HashMap::new();
     let mut parent: HashMap<T, T> = HashMap::new();
@@ -209,7 +205,7 @@ fn run_dijkstra<
     }
 
     while let Some(HeapState { node, cost }) = heap.pop() {
-        if is_end(node) {
+        if is_end(&node) {
             let mut path = vec![];
             let mut current = Some(&node);
 
@@ -223,7 +219,7 @@ fn run_dijkstra<
             return Some((path, cost));
         }
 
-        for (next, next_cost) in successors(node) {
+        for (next, next_cost) in successors(&node) {
             let new_cost = cost + next_cost;
 
             let next_state = HeapState {
