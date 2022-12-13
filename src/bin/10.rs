@@ -22,11 +22,7 @@ pub fn part_two(input: &str) -> Option<u32> {
     for (index, (_, x_value)) in result.iter().enumerate() {
         let sprite_range = (x_value - 1)..=(x_value + 1);
         let normalized_index = index as i32 % 40;
-        if sprite_range.contains(&normalized_index) {
-            screen_state.push(true);
-        } else {
-            screen_state.push(false);
-        }
+        screen_state.push(sprite_range.contains(&normalized_index));
     }
 
     print_screen(&screen_state);

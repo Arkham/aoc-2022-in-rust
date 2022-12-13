@@ -1,22 +1,18 @@
-pub fn part_one(input: &str) -> Option<u32> {
+pub fn part_one(input: &str) -> Option<usize> {
     Some(
         parse_input(input)
             .iter()
             .filter(|(x, y)| contain(*x, *y))
             .count()
-            .try_into()
-            .unwrap(),
     )
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+pub fn part_two(input: &str) -> Option<usize> {
     Some(
         parse_input(input)
             .iter()
             .filter(|(x, y)| overlap(*x, *y))
             .count()
-            .try_into()
-            .unwrap(),
     )
 }
 

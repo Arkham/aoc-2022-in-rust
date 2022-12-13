@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
-use std::collections::HashSet;
 use std::iter::FromIterator;
+use itertools::Itertools;
 
 pub fn part_one(input: &str) -> Option<u32> {
     find_unique_marker(input, 4)
@@ -30,8 +30,7 @@ fn find_unique_marker(input: &str, marker_length: usize) -> Option<u32> {
 }
 
 fn all_different(window: &VecDeque<char>) -> bool {
-    let set : HashSet<&char> = HashSet::from_iter(window);
-    set.len() == window.len()
+    window.iter().unique().count() == window.len()
 }
 
 fn main() {

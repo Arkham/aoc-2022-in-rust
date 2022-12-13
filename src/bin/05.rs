@@ -27,12 +27,12 @@ fn run_instructions(
         let to = instruction.to - 1;
 
         // source stack
-        let read_only: Vec<char> = board_state[from].to_vec();
-        let (to_move, to_keep) = read_only.split_at(instruction.count);
+        let source: Vec<char> = board_state[from].clone();
+        let (to_move, to_keep) = source.split_at(instruction.count);
         board_state[from] = to_keep.to_vec();
 
         // destination stack
-        let mut result = to_move.to_vec().to_owned();
+        let mut result = to_move.to_vec();
         match &crane_mode {
             CraneBehaviour::OneByOne => result.reverse(),
             CraneBehaviour::AllTogether => (),
@@ -64,21 +64,16 @@ fn parse_input(input: &str) -> (BoardState, Vec<Instruction>) {
 
     // create stacks
     let (columns_input, stacks_input) = lines.split_last().unwrap();
-    let columns_count: usize = columns_input
-        .split_whitespace()
-        .last()
-        .unwrap()
-        .parse()
-        .unwrap();
+    let columns_count: usize = columns_input.split_whitespace().count();
     let mut columns = vec![vec![]; columns_count];
 
     // fill stacks
     for row_input in stacks_input {
-        let by_column: Vec<String> = String::from(*row_input)
+        let by_column: Vec<String> = row_input
             .chars()
             .collect::<Vec<_>>()
             .chunks(4)
-            .map(|chunk| chunk.iter().collect::<String>().trim().to_owned())
+            .map(|chunk| { chunk.iter().collect::<String>().trim().to_owned() })
             .collect();
 
         for (index, column) in by_column.iter().enumerate() {
