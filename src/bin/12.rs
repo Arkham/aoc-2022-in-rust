@@ -1,4 +1,4 @@
-pub fn part_one(input: &str) -> Option<usize> {
+pub fn part_one(input: &str) -> Option<(Vec<Coords>, usize)> {
     let board = Board::from(input);
 
     run_dijkstra(
@@ -6,7 +6,6 @@ pub fn part_one(input: &str) -> Option<usize> {
         |node| board.successors(node),
         |node| node == &board.end,
     )
-    .map(|(_, count)| count)
 }
 
 pub fn part_two(input: &str) -> Option<usize> {
@@ -30,14 +29,153 @@ pub fn part_two(input: &str) -> Option<usize> {
     .map(|(_, count)| count)
 }
 
+use eframe::egui;
+use egui::{Color32, Sense, Stroke};
+use std::collections::HashSet;
+use std::time::Duration;
+
+// fn main() {
+//     let input = advent_of_code::read_file("inputs", 12);
+//     advent_of_code::solve!(1, part_one, input);
+//     advent_of_code::solve!(2, part_two, input);
+// }
+
+#[cfg(target_arch = "wasm32")]
 fn main() {
-    let input = &advent_of_code::read_file("inputs", 12);
-    advent_of_code::solve!(1, part_one, input);
-    advent_of_code::solve!(2, part_two, input);
+    // Make sure panics are logged using `console.error`.
+    console_error_panic_hook::set_once();
+
+    // Redirect tracing to console.log and friends:
+    tracing_wasm::set_as_global_default();
+
+    let web_options = eframe::WebOptions::default();
+
+    wasm_bindgen_futures::spawn_local(async {
+        eframe::start_web(
+            // this is the id of the `<canvas>` element we have
+            // in our `index.html`
+            "canvas",
+            web_options,
+            Box::new(|_cc| Box::new(MyApp::new())),
+        )
+        .await
+        .expect("failed to start eframe");
+    });
 }
 
+
+#[cfg(not(target_arch = "wasm32"))]
+fn main() {
+    let options = eframe::NativeOptions {
+        initial_window_size: Some(egui::vec2(1280.0, 720.0)),
+        ..Default::default()
+    };
+
+    eframe::run_native(
+        "AoC 2022 - Day 12",
+        options,
+        Box::new(|_cc| Box::new(MyApp::new())),
+    )
+}
+
+// egui stuff
+
+struct MyApp {
+    coords: Vec<Coords>,
+    current: usize,
+    visited: HashSet<Coords>,
+}
+
+impl MyApp {
+    fn new() -> Self {
+        let input = include_str!("../inputs/12.txt");
+        let (coords, _) = part_one(input).unwrap();
+
+        Self {
+            coords,
+            current: 0,
+            visited: HashSet::new(),
+        }
+    }
+
+    fn update_state(&mut self) {
+        match self.coords.get(self.current) {
+            Some(v) => {
+                self.visited.insert(*v);
+                self.current += 1;
+            }
+            None => return,
+        }
+    }
+}
+
+impl eframe::App for MyApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.update_state();
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            const CANVAS_WIDTH: f32 = 900.0;
+            const CANVAS_HEIGHT: f32 = 900.0;
+            const SIDE: f32 = 6.0;
+
+            let painter_size = egui::vec2(CANVAS_WIDTH, CANVAS_HEIGHT);
+            let (_res, painter) = ui.allocate_painter(painter_size, Sense::hover());
+
+            let to_panel_pos =
+                |pos: Coords| egui::vec2(pos.x as f32 * SIDE, pos.y as f32 * SIDE).to_pos2();
+
+            let width = (CANVAS_WIDTH / SIDE).floor() as i32;
+            let height = (CANVAS_HEIGHT / SIDE).floor() as i32;
+
+            for x in 0..width {
+                for y in 0..height {
+                    let dot = Coords {
+                        x: x as usize,
+                        y: y as usize,
+                    };
+                    if !self.visited.contains(&dot) {
+                        continue;
+                    }
+                    let color = if self.coords.last() == Some(&dot) {
+                        Color32::GOLD
+                    } else {
+                        Color32::DARK_RED
+                    };
+
+                    let dot_pos = to_panel_pos(dot);
+                    painter.circle_stroke(dot_pos, 1.0, Stroke::new(2.0, color));
+                }
+            }
+
+            if let (Some(prev), Some(curr)) = (
+                self.coords.get(self.current - 1),
+                self.coords.get(self.current),
+            ) {
+                // paint the head
+                let head_pos = to_panel_pos(*prev);
+                painter.circle_stroke(head_pos, 2.0, Stroke::new(2.0, Color32::GREEN));
+
+                // paint the tail
+                let tail_pos = to_panel_pos(*curr);
+                painter.circle_stroke(tail_pos, 2.0, Stroke::new(2.0, Color32::YELLOW));
+
+                // paint an arrow from head to tail
+                painter.arrow(
+                    tail_pos,
+                    head_pos - tail_pos,
+                    Stroke::new(1.0, Color32::YELLOW),
+                )
+            }
+        });
+
+        ctx.request_repaint_after(Duration::from_millis(25));
+    }
+}
+
+// actually solving the problem
+
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
-struct Coords {
+pub struct Coords {
     x: usize,
     y: usize,
 }
@@ -238,32 +376,32 @@ fn run_dijkstra<T: Eq + Hash + Copy, S: FnMut(&T) -> Vec<(T, usize)>, E: FnMut(&
     None
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[test]
-    fn test_parse() {
-        use pretty_assertions::assert_eq;
-        let input = advent_of_code::read_file("examples", 12);
-        let board = Board::from(&input[..]);
+//     #[test]
+//     fn test_parse() {
+//         use pretty_assertions::assert_eq;
+//         let input = advent_of_code::read_file("examples", 12);
+//         let board = Board::from(&input[..]);
 
-        assert_eq!(board.start, Coords { x: 0, y: 0 });
-        assert_eq!(board.end, Coords { x: 5, y: 2 });
-        assert_eq!(board.num_rows, 5);
-        assert_eq!(board.num_cols, 8);
-        assert_eq!(board.to_string(), input.trim());
-    }
+//         assert_eq!(board.start, Coords { x: 0, y: 0 });
+//         assert_eq!(board.end, Coords { x: 5, y: 2 });
+//         assert_eq!(board.num_rows, 5);
+//         assert_eq!(board.num_cols, 8);
+//         assert_eq!(board.to_string(), input.trim());
+//     }
 
-    #[test]
-    fn test_part_one() {
-        let input = advent_of_code::read_file("examples", 12);
-        assert_eq!(part_one(&input), Some(31));
-    }
+//     #[test]
+//     fn test_part_one() {
+//         let input = advent_of_code::read_file("examples", 12);
+//         assert_eq!(part_one(&input).map(|x| x.1), Some(31));
+//     }
 
-    #[test]
-    fn test_part_two() {
-        let input = advent_of_code::read_file("examples", 12);
-        assert_eq!(part_two(&input), Some(29));
-    }
-}
+//     #[test]
+//     fn test_part_two() {
+//         let input = advent_of_code::read_file("examples", 12);
+//         assert_eq!(part_two(&input), Some(29));
+//     }
+// }

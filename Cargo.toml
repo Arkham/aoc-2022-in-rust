@@ -14,6 +14,11 @@ parse-display = "0.6.0"
 nom = "7.1.1"
 rustc-hash = "1.1.0"
 pathfinding = "4.0.0"
+egui = "0.20.1"
+eframe = "0.20.1"
+console_error_panic_hook = "0.1.7"
+tracing-wasm = "0.2.1"
+wasm-bindgen-futures = "0.4.33"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"
