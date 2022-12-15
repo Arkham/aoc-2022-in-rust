@@ -3,7 +3,7 @@ use parse_display::{Display, FromStr};
 use std::cmp::{max, min};
 use std::collections::HashMap;
 
-pub fn part_one(input: &str) -> Option<usize> {
+pub fn part_one(input: &str) -> Option<i32> {
     part_one_internal(2000000, input)
 }
 
@@ -11,19 +11,25 @@ pub fn part_two(input: &str) -> Option<i64> {
     part_two_internal(4000000, input)
 }
 
-fn part_one_internal(row: i32, input: &str) -> Option<usize> {
+fn part_one_internal(row: i32, input: &str) -> Option<i32> {
     let lines = parse_input(input);
     let board: Board = fill_board(lines);
+    let beacons: Vec<Pos> = board
+        .grid
+        .iter()
+        .filter_map(|(k, v)| if v == &Cell::Beacon { Some(k) } else { None })
+        .copied()
+        .collect();
 
     Some(
         build_ranges(row, &board.covered_areas)
             .iter()
             .map(|(start, end)| {
-                (*start..=*end)
-                    .collect::<Vec<_>>()
+                let matching_beacons = beacons
                     .iter()
-                    .filter(|x| board.grid.get(&Pos { x: **x, y: row }).is_none())
-                    .count()
+                    .filter(|pos| pos.y == row && (start..=end).contains(&&pos.x))
+                    .count();
+                end - start + 1 - (matching_beacons as i32)
             })
             .sum(),
     )
@@ -48,14 +54,14 @@ fn part_two_internal(limit: i32, input: &str) -> Option<i64> {
 fn build_ranges(row: i32, covered_areas: &[(Pos, i32)]) -> Vec<(i32, i32)> {
     let sorted_ranges: Vec<(i32, i32)> = covered_areas
         .iter()
-        .filter_map(|(center, radius)| {
-            let distance = center.distance(Pos {
-                x: center.x,
+        .filter_map(|(sensor, radius)| {
+            let distance = sensor.distance(Pos {
+                x: sensor.x,
                 y: row,
             });
             if distance <= *radius {
-                let x_offset = radius - (center.y - row).abs();
-                Some((center.x - x_offset, center.x + x_offset))
+                let x_offset = radius - (sensor.y - row).abs();
+                Some((sensor.x - x_offset, sensor.x + x_offset))
             } else {
                 None
             }
@@ -67,8 +73,11 @@ fn build_ranges(row: i32, covered_areas: &[(Pos, i32)]) -> Vec<(i32, i32)> {
     for curr in sorted_ranges[1..].iter() {
         if let Some(&last) = &result.last() {
             if touch_or_overlap(&last, curr) {
-                result.pop();
-                result.push((min(last.0, curr.0), max(last.1, curr.1)))
+                let new_range: (i32, i32) = (min(last.0, curr.0), max(last.1, curr.1));
+                if new_range != last {
+                    result.pop();
+                    result.push(new_range)
+                }
             } else {
                 result.push(*curr)
             }
