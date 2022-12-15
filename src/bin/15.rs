@@ -1,5 +1,7 @@
 use itertools::Itertools;
 use parse_display::{Display, FromStr};
+use rayon::iter::IntoParallelIterator;
+use rayon::prelude::*;
 use std::cmp::{max, min};
 use std::collections::HashMap;
 
@@ -35,45 +37,50 @@ fn part_one_internal(row: i32, input: &str) -> Option<i32> {
     )
 }
 
+fn _part_two_internal_alt(limit: i32, input: &str) -> Option<i64> {
+    let lines = parse_input(input);
+    let board: Board = fill_board(lines);
+
+    (0..=limit).into_par_iter().find_map_any(|y| {
+        let ranges: Vec<(i32, i32)> = build_ranges(y, &board.sensors);
+        // when we find two ranges, we found the hole
+        if let [(_, before_result), (_, _)] = ranges[..] {
+            Some((before_result + 1) as i64 * 4_000_000 + y as i64)
+        } else {
+            None
+        }
+    })
+}
+
 fn part_two_internal(limit: i32, input: &str) -> Option<i64> {
     let lines = parse_input(input);
     let board: Board = fill_board(lines);
 
-    // for y in 0..=limit {
-    //     let ranges: Vec<(i32, i32)> = build_ranges(y, &board.sensors);
-    //     // when we find two ranges, we found the hole
-    //     if let [(_, before_result), (_, _)] = ranges[..] {
-    //         return Some((before_result + 1) as i64 * 4_000_000 + y as i64);
-    //     }
-    // }
-
-    for (sensor, radius) in board.sensors.iter() {
-        // expand each sensor radius by 1
-        for x in sensor.x - radius - 1..=sensor.x + radius + 1 {
-            if x > limit {
-                break;
-            } else if x < 0 {
-                continue;
-            }
-
-            let dy = radius - (x - sensor.x).abs() + 1;
-
-            'outer: for y in [sensor.y + dy, sensor.y - dy] {
-                if y <= limit && y >= 0 {
-                    // if there is at least one point which is not reachable
-                    // from any other sensor, then it must be the solution
-                    for (other, other_radius) in board.sensors.iter() {
-                        if other.distance(Pos { x, y }) <= *other_radius {
-                            break 'outer;
-                        }
-                    }
-                    return Some(x as i64 * 4_000_000 + y as i64);
+    board.sensors.iter().find_map(|(sensor, radius)| {
+        ((sensor.x - radius - 1)..=(sensor.x + radius + 1))
+            .into_par_iter()
+            .find_map_any(|x| {
+                if x < 0 || x > limit {
+                    return None;
                 }
-            }
-        }
-    }
 
-    None
+                let dy = radius - (x - sensor.x).abs() + 1;
+
+                'outer: for y in [sensor.y + dy, sensor.y - dy] {
+                    if y <= limit && y >= 0 {
+                        // if there is at least one point which is not reachable
+                        // from any other sensor, then it must be the solution
+                        for (other, other_radius) in board.sensors.iter() {
+                            if other.distance(Pos { x, y }) <= *other_radius {
+                                break 'outer;
+                            }
+                        }
+                        return Some(x as i64 * 4_000_000 + y as i64);
+                    }
+                }
+                None
+            })
+    })
 }
 
 fn build_ranges(row: i32, sensors: &[(Pos, i32)]) -> Vec<(i32, i32)> {

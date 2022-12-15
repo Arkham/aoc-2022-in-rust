@@ -14,6 +14,7 @@ parse-display = "0.6.0"
 nom = "7.1.1"
 rustc-hash = "1.1.0"
 pathfinding = "4.0.0"
+rayon = "1.6.1"
 
 [dev-dependencies]
 pretty_assertions = "1.3.0"
