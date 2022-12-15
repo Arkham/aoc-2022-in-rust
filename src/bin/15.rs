@@ -4,11 +4,11 @@ use std::cmp::{max, min};
 use std::collections::HashMap;
 
 pub fn part_one(input: &str) -> Option<i32> {
-    part_one_internal(2000000, input)
+    part_one_internal(2_000_000, input)
 }
 
 pub fn part_two(input: &str) -> Option<i64> {
-    part_two_internal(4000000, input)
+    part_two_internal(4_000_000, input)
 }
 
 fn part_one_internal(row: i32, input: &str) -> Option<i32> {
@@ -22,7 +22,7 @@ fn part_one_internal(row: i32, input: &str) -> Option<i32> {
         .collect();
 
     Some(
-        build_ranges(row, &board.covered_areas)
+        build_ranges(row, &board.sensors)
             .iter()
             .map(|(start, end)| {
                 let matching_beacons = beacons
@@ -39,20 +39,45 @@ fn part_two_internal(limit: i32, input: &str) -> Option<i64> {
     let lines = parse_input(input);
     let board: Board = fill_board(lines);
 
-    for y in 0..=limit {
-        let ranges: Vec<(i32, i32)> = build_ranges(y, &board.covered_areas);
+    // for y in 0..=limit {
+    //     let ranges: Vec<(i32, i32)> = build_ranges(y, &board.sensors);
+    //     // when we find two ranges, we found the hole
+    //     if let [(_, before_result), (_, _)] = ranges[..] {
+    //         return Some((before_result + 1) as i64 * 4_000_000 + y as i64);
+    //     }
+    // }
 
-        // when we find two ranges, we found the hole
-        if let [(_, before_result), (_, _)] = ranges[..] {
-            return Some((before_result + 1) as i64 * 4000000 + y as i64);
+    for (sensor, radius) in board.sensors.iter() {
+        // expand each sensor radius by 1
+        for x in sensor.x - radius - 1..=sensor.x + radius + 1 {
+            if x > limit {
+                break;
+            } else if x < 0 {
+                continue;
+            }
+
+            let dy = radius - (x - sensor.x).abs() + 1;
+
+            'outer: for y in [sensor.y + dy, sensor.y - dy] {
+                if y <= limit && y >= 0 {
+                    // if there is at least one point which is not reachable
+                    // from any other sensor, then it must be the solution
+                    for (other, other_radius) in board.sensors.iter() {
+                        if other.distance(Pos { x, y }) <= *other_radius {
+                            break 'outer;
+                        }
+                    }
+                    return Some(x as i64 * 4_000_000 + y as i64);
+                }
+            }
         }
     }
 
     None
 }
 
-fn build_ranges(row: i32, covered_areas: &[(Pos, i32)]) -> Vec<(i32, i32)> {
-    let sorted_ranges: Vec<(i32, i32)> = covered_areas
+fn build_ranges(row: i32, sensors: &[(Pos, i32)]) -> Vec<(i32, i32)> {
+    let sorted_ranges: Vec<(i32, i32)> = sensors
         .iter()
         .filter_map(|(sensor, radius)| {
             let distance = sensor.distance(Pos {
@@ -105,13 +130,13 @@ enum Cell {
 #[derive(PartialEq, Debug)]
 struct Board {
     grid: HashMap<Pos, Cell>,
-    covered_areas: Vec<(Pos, i32)>,
+    sensors: Vec<(Pos, i32)>,
     bounds: ((i32, i32), (i32, i32)),
 }
 
 fn fill_board(info: Vec<SensorInfo>) -> Board {
     let mut grid = HashMap::new();
-    let mut covered_areas = Vec::new();
+    let mut sensors = Vec::new();
     let mut min_x = std::i32::MAX;
     let mut min_y = std::i32::MAX;
     let mut max_x = std::i32::MIN;
@@ -121,7 +146,7 @@ fn fill_board(info: Vec<SensorInfo>) -> Board {
         grid.insert(elem.sensor, Cell::Sensor);
         grid.insert(elem.nearest_beacon, Cell::Beacon);
         let distance = elem.sensor.distance(elem.nearest_beacon);
-        covered_areas.push((elem.sensor, distance));
+        sensors.push((elem.sensor, distance));
 
         if elem.sensor.x - distance < min_x {
             min_x = elem.sensor.x - distance
@@ -142,7 +167,7 @@ fn fill_board(info: Vec<SensorInfo>) -> Board {
 
     Board {
         grid,
-        covered_areas,
+        sensors,
         bounds: ((min_x, max_x), (min_y, max_y)),
     }
 }
@@ -152,7 +177,7 @@ fn _print_board(board: &Board) {
 
     for y in min_y..=max_y {
         for x in min_x..=max_x {
-            let row_ranges = build_ranges(y, &board.covered_areas);
+            let row_ranges = build_ranges(y, &board.sensors);
             match board.grid.get(&Pos { x, y }) {
                 Some(Cell::Sensor) => print!("S"),
                 Some(Cell::Beacon) => print!("B"),
@@ -224,6 +249,6 @@ mod tests {
     #[test]
     fn test_part_two() {
         let input = advent_of_code::read_file("examples", 15);
-        assert_eq!(part_two_internal(20, &input), Some(56000011));
+        assert_eq!(part_two_internal(20, &input), Some(56_000_011));
     }
 }
