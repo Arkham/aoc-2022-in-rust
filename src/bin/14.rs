@@ -37,11 +37,11 @@ fn fill_with_sand(board: &mut Board) {
 
     let mut to_visit = Vec::new();
     let drop_point: Coords = (500, 0);
-    to_visit.push(drop_point.clone());
+    to_visit.push(drop_point);
 
     while let Some(v) = to_visit.last() {
         if v.1 < max_y {
-            match neighbours(v).iter().find(|n| board.grid.get(n) == None) {
+            match neighbours(v).iter().find(|n| board.grid.get(n).is_none()) {
                 Some(empty_tile) => to_visit.push(*empty_tile),
                 None => {
                     if let Some(value) = to_visit.pop() {
