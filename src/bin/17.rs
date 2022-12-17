@@ -31,7 +31,7 @@ pub fn part_one(input: &str) -> Option<i64> {
         }
     }
 
-    Some(board.max_y + board.floor_level)
+    Some(board.height())
 }
 
 pub fn part_two(input: &str) -> Option<i64> {
@@ -39,11 +39,11 @@ pub fn part_two(input: &str) -> Option<i64> {
     let directions = parse_input(input);
     let mut direction_source = directions.iter().enumerate().cycle();
 
-    let mut memory: FxHashMap<(usize, usize), (u64, i64)> = FxHashMap::default();
+    let mut memory: FxHashMap<(i64, usize, usize), (u64, i64)> = FxHashMap::default();
 
     let mut board = Board::new();
     let mut counter: u64 = 0;
-    let threshold: u64 = 1000000000000;
+    let threshold: u64 = 1_000_000_000_000;
 
     for (shape_index, current_shape) in shapes.iter().enumerate().cycle() {
         counter += 1;
@@ -61,18 +61,23 @@ pub fn part_two(input: &str) -> Option<i64> {
             } else {
                 board.settle_shape();
 
-                if board.is_empty() {
-                    // if the same shape has cleaned the board before with the same instruction we can skip a lot of turns
-                    if let Some((old_counter, old_floor_level)) =
-                        memory.get(&(shape_index, dir_index))
-                    {
-                        let counter_diff = counter - old_counter;
-                        let floor_diff = board.floor_level - old_floor_level;
-                        let remaining = (threshold - counter) / counter_diff;
-                        counter += remaining * counter_diff;
-                        board.floor_level += remaining as i64 * floor_diff;
-                    }
-                    memory.insert((shape_index, dir_index), (counter, board.floor_level));
+                let board_hash = board.hash(8);
+
+                // if we have a similar board with the same shape and same direction,
+                // we have detected a cycle and can skip a lot of steps
+                if let Some((old_counter, old_height)) =
+                    memory.get(&(board_hash, shape_index, dir_index))
+                {
+                    let counter_diff = counter - old_counter;
+                    let height_diff = board.height() - old_height;
+                    let remaining = (threshold - counter) / counter_diff;
+                    counter += remaining * counter_diff;
+                    board.floor_level += remaining as i64 * height_diff;
+                } else {
+                    memory.insert(
+                        (board_hash, shape_index, dir_index),
+                        (counter, board.height()),
+                    );
                 }
 
                 break;
@@ -80,7 +85,7 @@ pub fn part_two(input: &str) -> Option<i64> {
         }
     }
 
-    Some(board.max_y + board.floor_level)
+    Some(board.height())
 }
 
 fn main() {
@@ -173,8 +178,26 @@ impl Board {
         }
     }
 
-    fn is_empty(&self) -> bool {
-        self.points == (0..7).map(|x| Pos { x, y: 0 }).collect()
+    fn hash(&self, top_rows: i64) -> i64 {
+        let min_y = self.max_y - (top_rows - 1);
+        let bools: Vec<bool> = (min_y..=self.max_y)
+            .flat_map(|y| {
+                (0..7)
+                    .map(|x| self.points.get(&Pos { x, y }).is_some())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        bools
+            .iter()
+            .rev()
+            .enumerate()
+            .map(|(i, v)| if *v { (2 as i64).pow(i as u32) } else { 0 })
+            .sum()
+    }
+
+    fn height(&self) -> i64 {
+        self.floor_level + self.max_y
     }
 }
 
@@ -382,9 +405,9 @@ mod tests {
         assert_eq!(part_one(&input), Some(3068));
     }
 
-    // #[test]
-    // fn test_part_two() {
-    //     let input = advent_of_code::read_file("examples", 17);
-    //     assert_eq!(part_two(&input), None);
-    // }
+    #[test]
+    fn test_part_two() {
+        let input = advent_of_code::read_file("examples", 17);
+        assert_eq!(part_two(&input), Some(1514285714288));
+    }
 }
