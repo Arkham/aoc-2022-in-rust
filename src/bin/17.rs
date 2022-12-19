@@ -192,7 +192,7 @@ impl Board {
             .iter()
             .rev()
             .enumerate()
-            .map(|(i, v)| if *v { (2 as i64).pow(i as u32) } else { 0 })
+            .map(|(i, v)| if *v { 2_i64.pow(i as u32) } else { 0 })
             .sum()
     }
 

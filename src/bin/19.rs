@@ -73,7 +73,7 @@ struct State {
     robots: Robots,
 }
 
-fn calculate_max_geodes(time_limit: u32, blueprint: BlueprintInfo) -> u32 {
+fn calculate_max_geodes(time_limit: u32, bp: BlueprintInfo) -> u32 {
     let mut visited: FxHashSet<State> = FxHashSet::default();
     let mut best = 0;
 
@@ -94,45 +94,47 @@ fn calculate_max_geodes(time_limit: u32, blueprint: BlueprintInfo) -> u32 {
     };
     to_visit.push_back((initial_state, 0));
 
-    while let Some((current, turn)) = to_visit.pop_front() {
+    while let Some((mut current, turn)) = to_visit.pop_front() {
         if turn == time_limit {
             best = best.max(current.resources.geode);
             continue;
         }
+
+        cap(&mut current, &bp, time_limit - turn);
 
         if visited.contains(&current) {
             continue;
         }
         visited.insert(current);
 
-        if should_build_geode_robot(&current, &blueprint) {
+        if should_build_geode_robot(&current, &bp) {
             let mut new_state = collect_resources(&current);
-            new_state.resources.ore -= blueprint.geode_robot_ore;
-            new_state.resources.obsidian -= blueprint.geode_robot_obsidian;
+            new_state.resources.ore -= bp.geode_robot_ore;
+            new_state.resources.obsidian -= bp.geode_robot_obsidian;
             new_state.robots.geode += 1;
             to_visit.push_back((new_state, turn + 1));
             continue;
         }
 
-        if should_build_obsidian_robot(&current, &blueprint) {
+        if should_build_obsidian_robot(&current, &bp) {
             let mut new_state = collect_resources(&current);
-            new_state.resources.ore -= blueprint.obsidian_robot_ore;
-            new_state.resources.clay -= blueprint.obsidian_robot_clay;
+            new_state.resources.ore -= bp.obsidian_robot_ore;
+            new_state.resources.clay -= bp.obsidian_robot_clay;
             new_state.robots.obsidian += 1;
             to_visit.push_back((new_state, turn + 1));
         }
 
-        if should_build_ore_robot(&current, &blueprint) {
+        if should_build_clay_robot(&current, &bp) {
             let mut new_state = collect_resources(&current);
-            new_state.resources.ore -= blueprint.ore_robot_ore;
-            new_state.robots.ore += 1;
+            new_state.resources.ore -= bp.clay_robot_ore;
+            new_state.robots.clay += 1;
             to_visit.push_back((new_state, turn + 1));
         }
 
-        if should_build_clay_robot(&current, &blueprint) {
+        if should_build_ore_robot(&current, &bp) {
             let mut new_state = collect_resources(&current);
-            new_state.resources.ore -= blueprint.clay_robot_ore;
-            new_state.robots.clay += 1;
+            new_state.resources.ore -= bp.ore_robot_ore;
+            new_state.robots.ore += 1;
             to_visit.push_back((new_state, turn + 1));
         }
 
@@ -143,45 +145,82 @@ fn calculate_max_geodes(time_limit: u32, blueprint: BlueprintInfo) -> u32 {
 }
 
 fn collect_resources(state: &State) -> State {
+    let State { resources, robots } = state;
+
     State {
         resources: Resources {
-            ore: state.resources.ore + state.robots.ore,
-            clay: state.resources.clay + state.robots.clay,
-            obsidian: state.resources.obsidian + state.robots.obsidian,
-            geode: state.resources.geode + state.robots.geode,
+            ore: resources.ore + robots.ore,
+            clay: resources.clay + robots.clay,
+            obsidian: resources.obsidian + robots.obsidian,
+            geode: resources.geode + robots.geode,
         },
-        robots: state.robots,
+        robots: *robots,
     }
 }
 
-fn should_build_geode_robot(state: &State, blueprint: &BlueprintInfo) -> bool {
-    state.resources.ore >= blueprint.geode_robot_ore
-        && state.resources.obsidian >= blueprint.geode_robot_obsidian
+fn should_build_geode_robot(state: &State, bp: &BlueprintInfo) -> bool {
+    state.resources.ore >= bp.geode_robot_ore && state.resources.obsidian >= bp.geode_robot_obsidian
 }
 
-fn should_build_obsidian_robot(state: &State, blueprint: &BlueprintInfo) -> bool {
-    state.robots.obsidian < blueprint.geode_robot_obsidian
-        && state.resources.ore >= blueprint.obsidian_robot_ore
-        && state.resources.clay >= blueprint.obsidian_robot_clay
+fn should_build_obsidian_robot(state: &State, bp: &BlueprintInfo) -> bool {
+    state.robots.obsidian < bp.geode_robot_obsidian
+        && state.resources.ore >= bp.obsidian_robot_ore
+        && state.resources.clay >= bp.obsidian_robot_clay
 }
 
-fn should_build_clay_robot(state: &State, blueprint: &BlueprintInfo) -> bool {
-    state.robots.clay < blueprint.obsidian_robot_clay
-        && state.resources.ore >= blueprint.clay_robot_ore
+fn should_build_clay_robot(state: &State, bp: &BlueprintInfo) -> bool {
+    state.robots.clay < bp.obsidian_robot_clay && state.resources.ore >= bp.clay_robot_ore
 }
 
-fn should_build_ore_robot(state: &State, blueprint: &BlueprintInfo) -> bool {
-    let max_cost_in_ore: u32 = *[
-        blueprint.ore_robot_ore,
-        blueprint.clay_robot_ore,
-        blueprint.obsidian_robot_ore,
-        blueprint.geode_robot_ore,
+fn max_ore(bp: &BlueprintInfo) -> u32 {
+    *[
+        bp.ore_robot_ore,
+        bp.clay_robot_ore,
+        bp.obsidian_robot_ore,
+        bp.geode_robot_ore,
     ]
     .iter()
     .max()
-    .unwrap();
+    .unwrap()
+}
 
-    state.robots.ore < max_cost_in_ore && state.resources.ore >= blueprint.ore_robot_ore
+fn should_build_ore_robot(state: &State, bp: &BlueprintInfo) -> bool {
+    state.robots.ore < max_ore(bp) && state.resources.ore >= bp.ore_robot_ore
+}
+
+use std::cmp::min;
+
+fn cap(state: &mut State, bp: &BlueprintInfo, time_left: u32) {
+    // let's say that:
+    // - an obsidian robot costs 4 clay and we have 3 clay robots
+    // - there are 11 turns left before the end
+
+    // in those 11 turns our 3 clay robots will produce 30 clays,
+    // since we need the material at the beginning of the turn.
+    // so if we have a reserve of at least 14 clays, we don't need
+    // anymore clay and we can cap the production.
+
+    // the formula is then: cost + (cost - n_robots) * (time_left - 1)
+    // if we plug it in: 4 + (4 - 3) * 10 = 14
+
+    // if the following turn we ended up creating a new clay robot,
+    // the formula becomes: 4 + (4 - 4) * 9 = 4
+    // this is because every turn we'll be generating exactly the
+    // right amount of clay that we need. JIT baby!
+    let min_formula = |cost, n_robots| cost + (cost - n_robots) * (time_left - 1);
+
+    state.resources.ore = min(
+        state.resources.ore,
+        min_formula(max_ore(bp), state.robots.ore),
+    );
+    state.resources.clay = min(
+        state.resources.clay,
+        min_formula(bp.obsidian_robot_clay, state.robots.clay),
+    );
+    state.resources.obsidian = min(
+        state.resources.obsidian,
+        min_formula(bp.geode_robot_obsidian, state.robots.obsidian),
+    );
 }
 
 #[cfg(test)]

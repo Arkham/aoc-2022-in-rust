@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn test_simple() {
         let input = "1,1,1\n2,1,1";
-        assert_eq!(part_one(&input), Some(10));
+        assert_eq!(part_one(input), Some(10));
     }
 
     #[test]
