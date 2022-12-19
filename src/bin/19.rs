@@ -73,6 +73,27 @@ struct State {
     robots: Robots,
 }
 
+// we'll use this to keep track of which robots we built before.
+// in this way, if we could have built a certain robot previously,
+// but we didn't, we will not try to build it now. The moment we
+// create a new robot we reset this state.
+#[derive(PartialEq, Debug)]
+struct PrevBuild {
+    ore: bool,
+    clay: bool,
+    obsidian: bool,
+}
+
+impl PrevBuild {
+    fn empty() -> Self {
+        Self {
+            ore: false,
+            clay: false,
+            obsidian: false,
+        }
+    }
+}
+
 fn calculate_max_geodes(time_limit: u32, bp: BlueprintInfo) -> u32 {
     let mut visited: FxHashSet<State> = FxHashSet::default();
     let mut best = 0;
@@ -92,15 +113,16 @@ fn calculate_max_geodes(time_limit: u32, bp: BlueprintInfo) -> u32 {
             geode: 0,
         },
     };
-    to_visit.push_back((initial_state, 0));
+    to_visit.push_back((initial_state, PrevBuild::empty(), 0));
 
-    while let Some((mut current, turn)) = to_visit.pop_front() {
-        if turn == time_limit {
+    while let Some((mut current, prev_build, turn)) = to_visit.pop_front() {
+        let time_left = time_limit - turn;
+        if time_left == 0 {
             best = best.max(current.resources.geode);
             continue;
         }
 
-        cap(&mut current, &bp, time_limit - turn);
+        cap(&mut current, &bp, time_left);
 
         if visited.contains(&current) {
             continue;
@@ -112,33 +134,47 @@ fn calculate_max_geodes(time_limit: u32, bp: BlueprintInfo) -> u32 {
             new_state.resources.ore -= bp.geode_robot_ore;
             new_state.resources.obsidian -= bp.geode_robot_obsidian;
             new_state.robots.geode += 1;
-            to_visit.push_back((new_state, turn + 1));
+            to_visit.push_back((new_state, PrevBuild::empty(), turn + 1));
             continue;
         }
 
-        if should_build_obsidian_robot(&current, &bp) {
+        let should_build_obsidian = should_build_obsidian_robot(&current, &bp, &prev_build);
+        let should_build_clay = should_build_clay_robot(&current, &bp, &prev_build);
+        let should_build_ore = should_build_ore_robot(&current, &bp, &prev_build);
+
+        if should_build_obsidian {
             let mut new_state = collect_resources(&current);
             new_state.resources.ore -= bp.obsidian_robot_ore;
             new_state.resources.clay -= bp.obsidian_robot_clay;
             new_state.robots.obsidian += 1;
-            to_visit.push_back((new_state, turn + 1));
+            to_visit.push_back((new_state, PrevBuild::empty(), turn + 1));
         }
 
-        if should_build_clay_robot(&current, &bp) {
+        if should_build_clay {
             let mut new_state = collect_resources(&current);
             new_state.resources.ore -= bp.clay_robot_ore;
             new_state.robots.clay += 1;
-            to_visit.push_back((new_state, turn + 1));
+            to_visit.push_back((new_state, PrevBuild::empty(), turn + 1));
         }
 
-        if should_build_ore_robot(&current, &bp) {
+        if should_build_ore {
             let mut new_state = collect_resources(&current);
             new_state.resources.ore -= bp.ore_robot_ore;
             new_state.robots.ore += 1;
-            to_visit.push_back((new_state, turn + 1));
+            to_visit.push_back((new_state, PrevBuild::empty(), turn + 1));
         }
 
-        to_visit.push_back((collect_resources(&current), turn + 1))
+        if !should_build_obsidian || !should_build_clay || !should_build_ore {
+            to_visit.push_back((
+                collect_resources(&current),
+                PrevBuild {
+                    ore: should_build_ore,
+                    clay: should_build_clay,
+                    obsidian: should_build_obsidian,
+                },
+                turn + 1,
+            ))
+        }
     }
 
     best
@@ -162,14 +198,17 @@ fn should_build_geode_robot(state: &State, bp: &BlueprintInfo) -> bool {
     state.resources.ore >= bp.geode_robot_ore && state.resources.obsidian >= bp.geode_robot_obsidian
 }
 
-fn should_build_obsidian_robot(state: &State, bp: &BlueprintInfo) -> bool {
-    state.robots.obsidian < bp.geode_robot_obsidian
+fn should_build_obsidian_robot(state: &State, bp: &BlueprintInfo, prev_build: &PrevBuild) -> bool {
+    !prev_build.obsidian
+        && state.robots.obsidian < bp.geode_robot_obsidian
         && state.resources.ore >= bp.obsidian_robot_ore
         && state.resources.clay >= bp.obsidian_robot_clay
 }
 
-fn should_build_clay_robot(state: &State, bp: &BlueprintInfo) -> bool {
-    state.robots.clay < bp.obsidian_robot_clay && state.resources.ore >= bp.clay_robot_ore
+fn should_build_clay_robot(state: &State, bp: &BlueprintInfo, prev_build: &PrevBuild) -> bool {
+    !prev_build.clay
+        && state.robots.clay < bp.obsidian_robot_clay
+        && state.resources.ore >= bp.clay_robot_ore
 }
 
 fn max_ore(bp: &BlueprintInfo) -> u32 {
@@ -184,8 +223,8 @@ fn max_ore(bp: &BlueprintInfo) -> u32 {
     .unwrap()
 }
 
-fn should_build_ore_robot(state: &State, bp: &BlueprintInfo) -> bool {
-    state.robots.ore < max_ore(bp) && state.resources.ore >= bp.ore_robot_ore
+fn should_build_ore_robot(state: &State, bp: &BlueprintInfo, prev_build: &PrevBuild) -> bool {
+    !prev_build.ore && state.robots.ore < max_ore(bp) && state.resources.ore >= bp.ore_robot_ore
 }
 
 use std::cmp::min;
@@ -281,6 +320,6 @@ mod tests {
     // #[test]
     // fn test_part_two() {
     //     let input = advent_of_code::read_file("examples", 19);
-    //     assert_eq!(part_two(&input), Some(1));
+    //     assert_eq!(part_two(&input), Some(3472));
     // }
 }
