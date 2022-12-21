@@ -12,7 +12,7 @@ pub fn part_one(input: &str) -> Option<i64> {
 use std::process::Command;
 
 pub fn part_two(path: &str) -> Option<i64> {
-    let output = match Command::new("src/bin/21.sh").args(&[path]).output() {
+    let output = match Command::new("src/bin/21.sh").args([path]).output() {
         Ok(output) => String::from_utf8(output.stdout).unwrap(),
         Err(err) => panic!("Running process error: {}", err),
     };
