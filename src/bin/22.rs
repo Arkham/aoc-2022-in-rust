@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 pub fn part_one(input: &str) -> Option<i32> {
     let (_, (board, instructions)) = input_parser(input).unwrap();
@@ -320,7 +320,7 @@ impl std::ops::AddAssign for Pos {
 
 #[derive(PartialEq, Debug)]
 struct Board {
-    cells: HashMap<Pos, Cell>,
+    cells: FxHashMap<Pos, Cell>,
     start: Pos,
     bounds: (i32, i32),
 }
@@ -379,7 +379,7 @@ fn board_parser(i: &str) -> IResult<&str, Board> {
     map(
         separated_list1(tag("\n"), many1(alt((tag(" "), tag("."), tag("#"))))),
         |rows: Vec<Vec<&str>>| {
-            let mut result = HashMap::new();
+            let mut result = FxHashMap::default();
             let mut first = None;
             let mut max_x = 0;
             let mut max_y = 0;
