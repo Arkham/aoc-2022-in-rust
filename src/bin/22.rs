@@ -74,12 +74,9 @@ fn move_player(steps: u32, player: &Player, board: &Board) -> Player {
 
     let step = step_for_dir(&player.dir);
     let mut current = player.pos;
-    let mut next;
-    let mut count = 0;
 
-    while count < steps {
-        count += 1;
-        next = current + step;
+    for _ in 0..steps {
+        let next = current + step;
 
         match board.cells.get(&next) {
             Some(Cell::Tile) => {
@@ -127,14 +124,10 @@ fn move_player(steps: u32, player: &Player, board: &Board) -> Player {
 fn move_player_cube(steps: u32, player: &Player, board: &Board) -> Player {
     let mut dir = player.dir;
     let mut pos = player.pos;
-    let mut next;
-    let mut count = 0;
 
-    while count < steps {
-        count += 1;
-
+    for _ in 0..steps {
         let step = step_for_dir(&dir);
-        next = pos + step;
+        let next = pos + step;
 
         match board.cells.get(&next) {
             Some(Cell::Tile) => {
@@ -160,118 +153,35 @@ fn move_player_cube(steps: u32, player: &Player, board: &Board) -> Player {
 }
 
 fn wrap_around(dir: &Dir, pos: &Pos) -> (Dir, Pos) {
-    match dir {
+    let (new_dir, x, y) = match dir {
         Left => match pos.y {
-            0..=49 => (
-                Right,
-                Pos {
-                    x: 0,
-                    y: (49 - pos.y) + 100,
-                },
-            ),
-            50..=99 => (
-                Down,
-                Pos {
-                    x: pos.y - 50,
-                    y: 100,
-                },
-            ),
-            100..=149 => (
-                Right,
-                Pos {
-                    x: 50,
-                    y: 49 - (pos.y - 100),
-                },
-            ),
-            150..=199 => (
-                Down,
-                Pos {
-                    x: (pos.y - 150) + 50,
-                    y: 0,
-                },
-            ),
+            0..=49 => (Right, 0, (49 - pos.y) + 100),
+            50..=99 => (Down, pos.y - 50, 100),
+            100..=149 => (Right, 50, 49 - (pos.y - 100)),
+            150..=199 => (Down, (pos.y - 150) + 50, 0),
             _ => panic!("oopsies"),
         },
         Right => match pos.y {
-            0..=49 => (
-                Left,
-                Pos {
-                    x: 99,
-                    y: 149 - pos.y,
-                },
-            ),
-            50..=99 => (
-                Up,
-                Pos {
-                    x: 100 + (pos.y - 50),
-                    y: 49,
-                },
-            ),
-            100..=149 => (
-                Left,
-                Pos {
-                    x: 149,
-                    y: 149 - pos.y,
-                },
-            ),
-            150..=199 => (
-                Up,
-                Pos {
-                    x: (pos.y - 150) + 50,
-                    y: 149,
-                },
-            ),
+            0..=49 => (Left, 99, 149 - pos.y),
+            50..=99 => (Up, 100 + (pos.y - 50), 49),
+            100..=149 => (Left, 149, 149 - pos.y),
+            150..=199 => (Up, (pos.y - 150) + 50, 149),
             _ => panic!("oopsies"),
         },
         Up => match pos.x {
-            0..=49 => (
-                Right,
-                Pos {
-                    x: 50,
-                    y: pos.x + 50,
-                },
-            ),
-            50..=99 => (
-                Right,
-                Pos {
-                    x: 0,
-                    y: (pos.x - 50) + 150,
-                },
-            ),
-            100..=149 => (
-                Up,
-                Pos {
-                    x: pos.x - 100,
-                    y: 199,
-                },
-            ),
+            0..=49 => (Right, 50, pos.x + 50),
+            50..=99 => (Right, 0, (pos.x - 50) + 150),
+            100..=149 => (Up, pos.x - 100, 199),
             _ => panic!("oopsies"),
         },
         Down => match pos.x {
-            0..=49 => (
-                Down,
-                Pos {
-                    x: 100 + pos.x,
-                    y: 0,
-                },
-            ),
-            50..=99 => (
-                Left,
-                Pos {
-                    x: 49,
-                    y: (pos.x - 50) + 150,
-                },
-            ),
-            100..=149 => (
-                Left,
-                Pos {
-                    x: 99,
-                    y: 50 + (pos.x - 100),
-                },
-            ),
+            0..=49 => (Down, 100 + pos.x, 0),
+            50..=99 => (Left, 49, (pos.x - 50) + 150),
+            100..=149 => (Left, 99, 50 + (pos.x - 100)),
             _ => panic!("oopsies"),
         },
-    }
+    };
+    (new_dir, Pos { x, y })
 }
 
 #[derive(PartialEq, Debug)]
