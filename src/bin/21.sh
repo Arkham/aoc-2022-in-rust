@@ -1,6 +1,10 @@
 #! /usr/bin/env bash
 
-set -euxo pipefail
+# part 1
+# swipl \
+#   -g "use_module(library(clpr))" \
+#   -g "{$(sed -r -e 's/\<./\U&/g' -e 's/: / = /g' "$1" | paste -sd "," -)}, write(Root)" \
+#   -g halt
 
 swipl \
   -g "use_module(library(clpr))" \
