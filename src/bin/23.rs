@@ -83,7 +83,7 @@ impl Dir {
 }
 
 fn move_elves(board: &mut Board, dirs: &VecDeque<Dir>) -> bool {
-    let mut proposed_moves: FxHashMap<Pos, Vec<Pos>> = FxHashMap::default();
+    let mut proposed_moves: FxHashMap<Pos, Pos> = FxHashMap::default();
     for elf in board.cells.iter() {
         if elf.neighbours().iter().all(|p| !board.cells.contains(p)) {
             continue;
@@ -95,13 +95,14 @@ fn move_elves(board: &mut Board, dirs: &VecDeque<Dir>) -> bool {
                 .iter()
                 .all(|step| !board.cells.contains(&(*elf + *step)));
 
-            let proposed = *elf + dir.step();
-
             if all_empty {
-                if let Some(old) = proposed_moves.get_mut(&proposed) {
-                    old.push(*elf);
+                let proposed = *elf + dir.step();
+
+                // only two elfs can try to move into the same square
+                if proposed_moves.get(&proposed).is_some() {
+                    proposed_moves.remove(&proposed);
                 } else {
-                    proposed_moves.insert(proposed, vec![*elf]);
+                    proposed_moves.insert(proposed, *elf);
                 }
 
                 break;
@@ -113,17 +114,9 @@ fn move_elves(board: &mut Board, dirs: &VecDeque<Dir>) -> bool {
         return false;
     }
 
-    let moves = proposed_moves.iter().filter_map(|(pos, elves)| {
-        if elves.len() == 1 {
-            Some((pos, elves[0]))
-        } else {
-            None
-        }
-    });
-
-    for (dest, src) in moves {
+    for (dest, src) in proposed_moves {
         board.cells.remove(&src);
-        board.cells.insert(*dest);
+        board.cells.insert(dest);
     }
 
     true
